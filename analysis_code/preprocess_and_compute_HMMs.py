@@ -2,7 +2,6 @@ import numpy as np
 import pickle
 
 import load_subjects as ls
-# import eyetracking2_util as util
 from eyetracking_hmm import performance_according_to_HMM
 from util import impute_missing_data, break_eyetracking_into_trials, interpolate_trackit_to_eyetracking, filter_experiment
 
