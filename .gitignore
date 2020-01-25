@@ -1,3 +1,6 @@
+# pylint rc file
+pylintrc
+
 # Data
 eyetrack/ # Eye-tracking data
 trackit/ # TrackIt data
