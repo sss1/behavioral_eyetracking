@@ -120,12 +120,7 @@ def report_statistics_and_make_plots(subjects):
       null_hypothesis="mean(shrinky NDT) == mean(noshrinky NDT)",
       sample1=ndts['shrinky'], sample2=ndts['noshrinky'])
 
-  print(ptdts['shrinky'])
-  print(ndts['shrinky'])
-
   # Linearly regress statistics over age
-  print(min(ages['shrinky']), max(ages['shrinky']))
-  print(min(ages['noshrinky']), max(ages['noshrinky']))
   plt.figure()
   plt.subplot(2, 2, 1)
   plt.xlim((3.5, 6))
