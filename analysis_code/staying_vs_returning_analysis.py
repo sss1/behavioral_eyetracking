@@ -68,6 +68,18 @@ def compute_statistics(subjects):
           [compute_ndt(experiment.datatypes['eyetrack'].trials[trial_idx])
            for trial_idx in _TRIALS_TO_SHOW])
 
+  ages = {condition : [subject.experiments[condition].age
+                       for subject in subjects]
+          for condition in _CONDITIONS}
+  ptdts = {condition : [subject.experiments[condition].mean_ptdt
+                        for subject in subjects]
+           for condition in _CONDITIONS}
+  ndts = {condition : [subject.experiments[condition].mean_ndt
+                       for subject in subjects]
+          for condition in _CONDITIONS}
+
+  return ages, ptdts, ndts
+
 def report_ttest_1sample(null_hypothesis, sample, popmean, alpha=0.05):
   """Pretty-prints results of a two-sided one-sample t-test."""
 
@@ -90,18 +102,8 @@ def report_ttest_paired_2sample(null_hypothesis, sample1, sample2, alpha=0.05):
   else:
     print('Fail to reject null hypothesis.\n')
 
-def report_statistics_and_make_plots(subjects):
+def report_statistics_and_make_plots(ages, ptdts, ndts):
   """Generates statistics and plots reported in paper."""
-  ages = {condition : [subject.experiments[condition].age
-                       for subject in subjects]
-          for condition in _CONDITIONS}
-  ptdts = {condition : [subject.experiments[condition].mean_ptdt
-                        for subject in subjects]
-           for condition in _CONDITIONS}
-  ndts = {condition : [subject.experiments[condition].mean_ndt
-                       for subject in subjects]
-          for condition in _CONDITIONS}
-
   # Compare statistics to chance values
   report_ttest_1sample(null_hypothesis="mean(shrinky PTDT) == 1/6",
                        sample=ptdts['shrinky'], popmean=1/6)
@@ -172,9 +174,8 @@ def report_statistics_and_make_plots(subjects):
 
 def main():
   """Performs and reports analyses comparing staying and returning."""
-  subjects = load_subjects()
-  compute_statistics(subjects)
-  report_statistics_and_make_plots(subjects)
+  ages, ptdts, ndts = compute_statistics(load_subjects())
+  report_statistics_and_make_plots(ages, ptdts, ndts)
 
 if __name__ == '__main__':
   main()
