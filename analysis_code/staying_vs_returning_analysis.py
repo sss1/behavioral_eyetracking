@@ -55,6 +55,11 @@ def compute_ndt(trial):
       [l[1] for l in group_lengths if l[0] >= 0])
   return (mean_on_target_group_length - mean_nonmissing_group_length)/60
 
+def extract_experiment_stats(subjects, experiment_func):
+  return {condition : [experiment_func(subject.experiments[condition])
+                       for subject in subjects]
+          for condition in _CONDITIONS}
+
 def compute_statistics(subjects):
   """Computes mean PTDT and NDT for each experiment."""
   for subject in subjects:
@@ -68,15 +73,9 @@ def compute_statistics(subjects):
           [compute_ndt(experiment.datatypes['eyetrack'].trials[trial_idx])
            for trial_idx in _TRIALS_TO_SHOW])
 
-  ages = {condition : [subject.experiments[condition].age
-                       for subject in subjects]
-          for condition in _CONDITIONS}
-  ptdts = {condition : [subject.experiments[condition].mean_ptdt
-                        for subject in subjects]
-           for condition in _CONDITIONS}
-  ndts = {condition : [subject.experiments[condition].mean_ndt
-                       for subject in subjects]
-          for condition in _CONDITIONS}
+  ages = extract_experiment_stats(subjects, lambda exp : exp.age)
+  ptdts = extract_experiment_stats(subjects, lambda exp : exp.mean_ptdt)
+  ndts = extract_experiment_stats(subjects, lambda exp : exp.mean_ndt)
 
   return ages, ptdts, ndts
 
