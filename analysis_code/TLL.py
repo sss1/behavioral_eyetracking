@@ -8,7 +8,7 @@ import pickle
 import math
 import csv
 
-from eyetracking_hmm import log_emission_prob
+from hmm import log_emission_prob
 from sessions_list import get_sessions
 
 # BEGIN CODE FOR SPECIFYING/LOADING DATA
