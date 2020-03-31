@@ -44,18 +44,9 @@ def compute_statistics(subjects):
     for condition in ['shrinky', 'noshrinky']:
       experiment = subject.experiments[condition]
 
-      experiment.mean_loc_acc = np.mean(
-          [(experiment
-            .datatypes['trackit']
-            .trials[trial_idx]
-            .trial_metadata['gridClickCorrect'] == 'true')
-           for trial_idx in _TRIALS_TO_SHOW])
-      experiment.mean_ptdt = np.nanmean(
-          [stats_utils.compute_ptdt(experiment.datatypes['eyetrack'].trials[trial_idx])
-           for trial_idx in _TRIALS_TO_SHOW])
-      experiment.mean_ndt = np.nanmean(
-          [stats_utils.compute_ndt(experiment.datatypes['eyetrack'].trials[trial_idx])
-           for trial_idx in _TRIALS_TO_SHOW])
+      experiment.mean_loc_acc = stats_utils.experiment_loc_acc(experiment)
+      experiment.mean_ptdt = stats_utils.experiment_ptdt(experiment)
+      experiment.mean_ndt = stats_utils.experiment_ndt(experiment)
 
   ages = extract_experiment_stats(subjects, lambda exp : exp.age)
   loc_accs = extract_experiment_stats(subjects, lambda exp : exp.mean_loc_acc)

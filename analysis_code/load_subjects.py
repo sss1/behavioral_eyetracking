@@ -172,7 +172,7 @@ def load_dataset(experiment_ID, datatype_ID, subjects = {}):
   subjects -- (dict mapping subject IDs to Subject instances) dict to which to add new data
   
   """
-  for subject_idx in range(1):
+  for subject_idx in range(50):
     subject_ID = str(subject_idx)
     path = '../' + datatype_ID + '/' + experiment_ID + '/' + subject_ID + '.csv'
     print('Loading ' + experiment_ID + '_' + datatype_ID + ' for subject ' + subject_ID)
