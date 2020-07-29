@@ -1,5 +1,7 @@
 """Statistical helper functions for staying_vs_returning.py."""
 
+from typing import Iterable
+
 from enum import Enum, auto
 import itertools
 import matplotlib.pyplot as plt
@@ -11,10 +13,6 @@ import seaborn as sns
 import statsmodels.api as sm
 
 from typing import Callable, Collection, List, NamedTuple, Tuple
-
-class MissingDataTreatment(Enum):
-  AVERAGE_CASE = auto()
-  WORST_CASE = auto()
 
 _TRIALS_TO_KEEP = list(range(1, 11))
 
@@ -34,25 +32,26 @@ def experiment_loc_acc(experiment):
         .trial_metadata['gridClickCorrect'] == 'true')
        for trial_idx in _TRIALS_TO_KEEP])
 
-def experiment_ptdt(experiment, omit_missing_frames=True) -> float:
-  def trial_ptdt(trial):
-    """Computes proportion of transitions from distractors to target (PTDT)."""
-    frames = trial.HMM_MLE
-    if omit_missing_frames:
-      frames = frames[frames >= 0]
+def trial_ptdt(trial, omit_missing_frames=True):
+  """Computes proportion of transitions from distractors to target (PTDT)."""
+  frames = trial.HMM_MLE
+  if omit_missing_frames:
+    frames = frames[frames >= 0]
 
-    transitions_from_distractor_to_target = 0
-    transitions_from_distractor = 0
-    for first, second in zip(frames, frames[1:]):
-      if first > 0 and second != first and second >= 0:
-        transitions_from_distractor += 1
-        if second == 0:
-          transitions_from_distractor_to_target += 1
-    try:
-      return transitions_from_distractor_to_target \
-              /transitions_from_distractor
-    except ZeroDivisionError:
-      return float('nan')
+  transitions_from_distractor_to_target = 0
+  transitions_from_distractor = 0
+  for first, second in zip(frames, frames[1:]):
+    if first > 0 and second != first and second >= 0:
+      transitions_from_distractor += 1
+      if second == 0:
+        transitions_from_distractor_to_target += 1
+  try:
+    return transitions_from_distractor_to_target \
+            /transitions_from_distractor
+  except ZeroDivisionError:
+    return float('nan')
+
+def experiment_ptdt(experiment, omit_missing_frames=True) -> float:
   return average_over_trials(trial_ptdt, experiment)
 
 def calc_run_lengths(sequence: List[int]) -> List[Run]:
@@ -60,74 +59,83 @@ def calc_run_lengths(sequence: List[int]) -> List[Run]:
   return [Run(object=g[0], length=len(list(g[1])))
           for g in itertools.groupby(sequence)]
 
+
+def trial_ndt(trial, omit_missing_frames=True):
+  """Computes normalized duration on target (NDT) in seconds."""
+  frames = trial.HMM_MLE
+
+  group_lengths = [(g[0], len(list(g[1]))) for g in itertools.groupby(frames)]
+
+  if omit_missing_frames:
+    group_lengths = [l for l in group_lengths if l[0] >= 0]
+
+  mean_on_target_group_length = np.mean(
+      [l[1] for l in group_lengths if l[0] == 0])
+  mean_nonmissing_group_length = np.mean(
+      [l[1] for l in group_lengths])
+
+  return (mean_on_target_group_length - mean_nonmissing_group_length)/60
+
 def experiment_ndt(experiment, omit_missing_frames=True) -> float:
-  def trial_ndt(trial):
-    """Computes normalized duration on target (NDT) in seconds."""
-    frames = trial.HMM_MLE
-    if omit_missing_frames:
-      frames = frames[frames >= 0]
-
-    run_lengths = calc_run_lengths(frames)
-    mean_on_target_run_length = np.mean(
-        [l.length for l in run_lengths if l.object == 0])
-    mean_run_length = np.mean([l.length for l in run_lengths])
-
-    return (mean_on_target_run_length - mean_run_length)/60
   return average_over_trials(trial_ndt, experiment)
 
+def trial_pfot(trial, omit_missing_frames=True):
+  """Computes proportion of frames on target (PFT)."""
+  frames = trial.HMM_MLE
+  if omit_missing_frames:
+    frames = frames[frames >= 0]
+  return np.mean(frames == 0)
+
 def experiment_pfot(experiment, omit_missing_frames=True) -> float:
-  def trial_pfot(trial):
-    """Computes proportion of frames on target (PFT)."""
-    frames = trial.HMM_MLE
-    if omit_missing_frames:
-      frames = frames[frames >= 0]
-    return np.mean(frames == 0)
   return average_over_trials(trial_pfot, experiment)
 
+def trial_atd(trial, omit_missing_frames=True):
+  """Computes average tracking duration (ATD) in seconds."""
+  frames = trial.HMM_MLE
+  if omit_missing_frames:
+    frames = frames[frames >= 0]
+  total_frames = len(frames)
+  num_runs = len([run for run in calc_run_lengths(frames)])
+  if num_runs == 0:
+    return float('nan')
+  return (total_frames/num_runs)/60
+
 def experiment_atd(experiment, omit_missing_frames=True) -> float:
-  def trial_atd(trial):
-    """Computes average tracking duration (ATD) in seconds."""
-    frames = trial.HMM_MLE
-    if omit_missing_frames:
-      frames = frames[frames >= 0]
-    total_frames = len(frames)
-    num_runs = len([run for run in calc_run_lengths(frames)])
-    if num_runs == 0:
-      return float('nan')
-    return (total_frames/num_runs)/60
   return average_over_trials(trial_atd, experiment)
 
+def trial_atr(trial, omit_missing_frames=True):
+  """Computes average time to return (ATR) in seconds."""
+  frames = trial.HMM_MLE
+  if omit_missing_frames:
+    frames = frames[frames >= 0]
+
+  runs = calc_run_lengths(trial.HMM_MLE)
+  return_times = []
+  current_return_time = 0
+  for run in runs:
+    if run.object == 0:
+      return_times.append(current_return_time/60)
+      current_return_time = 0
+    else:
+      current_return_time += run.length
+  return np.mean(return_times)
+
 def experiment_atr(experiment, omit_missing_frames=True) -> float:
-  def trial_atr(trial):
-    """Computes average time to return (ATR) in seconds."""
-    frames = trial.HMM_MLE
-    if omit_missing_frames:
-      frames = frames[frames >= 0]
-
-    runs = calc_run_lengths(trial.HMM_MLE)
-    return_times = []
-    current_return_time = 0
-    for run in runs:
-      if run.object == 0:
-        return_times.append(current_return_time/60)
-        current_return_time = 0
-      else:
-        current_return_time += run.length
-    return np.mean(return_times)
-
   return average_over_trials(trial_atr, experiment)
 
-def experiment_wtd(experiment, omit_missing_frames=True) -> float:
-  def trial_wtd(trial):
-    """Computes within-trial decrement (WDT)."""
-    if omit_missing_frames:
-      x = np.arange(len(trial.HMM_MLE))[trial.HMM_MLE >= 0]
-      y = (trial.HMM_MLE[trial.HMM_MLE >= 0] == 0)
-    else:
-      x = np.array(len(trial.HMM_MLE))
-      y = (trial.HMM_MLE == 0)
-    return linear_regression_with_CIs(x, y, return_CIs=False)
-  return average_over_trials(trial_wtd, experiment)
+def trial_wtd(trial, omit_missing_frames=True):
+  """Computes within-trial decrement (WDT)."""
+  x = np.arange(len(trial.HMM_MLE))/60
+  y = (trial.HMM_MLE == 0)
+  if omit_missing_frames:
+    x = x[trial.HMM_MLE >= 0]
+    y = y[trial.HMM_MLE >= 0]
+  return linear_regression_with_CIs(x/60, y, return_CIs=False)
+
+def experiment_wtd(experiment,
+                   omit_missing_frames=True) -> float:
+  return average_over_trials(trial_wtd, experiment,
+                             omit_missing_frames=omit_missing_frames)
 
 def experiment_btd(experiment, omit_missing_frames=True) -> float:
   """Computes between-trials decrement (BTD).
@@ -147,10 +155,25 @@ def experiment_btd(experiment, omit_missing_frames=True) -> float:
   slope = linear_regression_with_CIs(xs, ys, return_CIs=False)
   return slope
 
-def report_ttest_1sample(null_hypothesis, sample, popmean, alpha=0.05):
-  """Pretty-prints results of a two-sided one-sample t-test."""
+def report_ttest_1sample(
+        null_hypothesis: str, sample: List[float], popmean: float,
+        one_sided: bool = False, alpha: float = 0.05):
+  """Performs and pretty-prints results of a one-sample t-test.
+  
+  By default, the test is two-sided.
+  If one-sided is True, the test is assumed to be for sample_mean > popmean.
+
+  Args:
+    null_hypothesis: string describing null hypothesis being tested
+    sample: data sample
+    popmean: population mean under null hypothesis
+    one_sided: If True, perform a 1-sided test; else, perform a 2-sided test
+    alpha: Test level
+  """
 
   t_value, p_value = stats.ttest_1samp(sample, popmean)
+  if one_sided and t_value > 0:
+      p_value /= 2
   print('Test for null hypothesis "{}".'.format(null_hypothesis))
   print('Sample mean: {}, Sample SD: {}'.format(np.mean(sample), np.std(sample)))
   print('t({})={}, p={}.'.format(len(sample)-1, t_value, p_value))
@@ -193,7 +216,15 @@ def linear_regression_with_CIs(x, y, return_CIs = True):
   CI = model.conf_int(alpha=0.05, cols=[1])[0]
   return model.params[1], CI[0], CI[1]
 
-def _calc_indirect_effect(x, y, m, return_prop=False):
+def _calc_indirect_effect(x, y, m):
+  """Estimate standardized indirect effect and proportion of mediation.
+  
+  Specifically, computes the estimated indirect effect and proportion of the
+  relationship of x on y that is mediated by m.
+  
+  Args:
+    x: samples from 
+  """
   x = stats.zscore(x)
   y = stats.zscore(y)
   m = stats.zscore(m)
@@ -201,30 +232,29 @@ def _calc_indirect_effect(x, y, m, return_prop=False):
   xs = np.stack((x, m), axis=1)
   remaining_effect = sm.OLS(y, sm.add_constant(xs)).fit().params[1]
   indirect_effect = direct_effect - remaining_effect
-  if return_prop:
-    proportion_mediated = 1 - remaining_effect/direct_effect
-    return indirect_effect, proportion_mediated
-  return indirect_effect
+  proportion_mediated = 1 - remaining_effect/direct_effect
+  return indirect_effect, proportion_mediated
 
 def mediation_analysis(x, y, m, condition, title, num_reps = 10000):
   n = len(x[condition])
   indirect_effect, prop_mediated = _calc_indirect_effect(x[condition],
                                                          y[condition],
-                                                         m[condition],
-                                                         return_prop=True)
+                                                         m[condition])
   subsampled_indirect_effects = np.zeros((num_reps,))
+  subsampled_prop_mediated = np.zeros((num_reps,))
   for rep in range(num_reps):
     samples = random.choices(range(n), k=n)
     x_sub = [x[condition][i] for i in samples]
     y_sub = [y[condition][i] for i in samples]
     m_sub = [m[condition][i] for i in samples]
+    subsampled_indirect_effects[rep], subsampled_prop_mediated[rep] = _calc_indirect_effect(x_sub, y_sub, m_sub)
 
-    subsampled_indirect_effects[rep] = _calc_indirect_effect(x_sub, y_sub,
-                                                             m_sub)
-  CI_lower = np.percentile(subsampled_indirect_effects, 2.5)
-  CI_upper = np.percentile(subsampled_indirect_effects, 97.5)
+  indirect_effect_CI_lower = np.percentile(subsampled_indirect_effects, 2.5)
+  indirect_effect_CI_upper = np.percentile(subsampled_indirect_effects, 97.5)
   p_value = np.mean(subsampled_indirect_effects < 0)
+  prop_mediated_CI_lower = np.percentile(subsampled_prop_mediated, 2.5)
+  prop_mediated_CI_upper = np.percentile(subsampled_prop_mediated, 97.5)
   print(title)
-  print('Indirect Effect: {}    95% CI: ({}, {})'.format(indirect_effect, CI_lower, CI_upper))
-  print('Proportion Mediation: {}'.format(prop_mediated))
-  print('p-value: {}'.format(p_value))
+  print(f'Indirect Effect: {indirect_effect}    95% CI: ({indirect_effect_CI_lower}, {indirect_effect_CI_upper})')
+  print(f'Proportion Mediation: {prop_mediated}    95% CI: ({prop_mediated_CI_lower}, {prop_mediated_CI_upper})')
+  print(f'p-value: {p_value}')
