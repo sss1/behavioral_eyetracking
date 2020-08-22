@@ -11,6 +11,7 @@ import random
 from scipy import stats
 import seaborn as sns
 import statsmodels.api as sm
+import pandas as pd
 
 from typing import Callable, Collection, List, NamedTuple, Tuple
 
@@ -195,11 +196,19 @@ def report_ttest_paired_2sample(null_hypothesis, sample1, sample2, alpha=0.05):
   else:
     print('Fail to reject null hypothesis.\n')
 
-def linreg_summary_and_plot(x, y, condition, name=None, plot=True):
+def linreg_summary_and_plot(x: str, y: str, data: pd.DataFrame, name=None, plot=True):
+
+  conditions = data['condition'].unique()
+  if len(conditions) != 1:
+    raise ValueError('Trying to regress multiple conditions at once: '
+                     f'{conditions}')
+  condition = conditions[0]
+
   if name:
     print('{} ({}):\n'.format(name.upper(), condition.upper()))
-  xs = x[condition]
-  ys = y[condition]
+
+  xs = data[x]
+  ys = data[y]
   print(sm.OLS(ys, sm.add_constant(xs)).fit().summary())
   if plot:
     sns.regplot(xs, ys, truncate=False)
@@ -235,18 +244,22 @@ def _calc_indirect_effect(x, y, m):
   proportion_mediated = 1 - remaining_effect/direct_effect
   return indirect_effect, proportion_mediated
 
-def mediation_analysis(x, y, m, condition, title, num_reps = 10000):
-  n = len(x[condition])
-  indirect_effect, prop_mediated = _calc_indirect_effect(x[condition],
-                                                         y[condition],
-                                                         m[condition])
+def mediation_analysis(x: str, y: str, m: str, data: pd.DataFrame, title, num_reps = 10000):
+
+  conditions = data['condition'].unique()
+  if len(conditions) != 1:
+    raise ValueError('Trying to regress multiple conditions at once: '
+                     f'{conditions}')
+  condition = conditions[0]
+
+  indirect_effect, prop_mediated = _calc_indirect_effect(data[x], data[y], data[m])
   subsampled_indirect_effects = np.zeros((num_reps,))
   subsampled_prop_mediated = np.zeros((num_reps,))
   for rep in range(num_reps):
-    samples = random.choices(range(n), k=n)
-    x_sub = [x[condition][i] for i in samples]
-    y_sub = [y[condition][i] for i in samples]
-    m_sub = [m[condition][i] for i in samples]
+    samples = random.choices(range(len(data[x])), k=len(data[x]))
+    x_sub = [data.loc[data.index[i], x] for i in samples]
+    y_sub = [data.loc[data.index[i], y] for i in samples]
+    m_sub = [data.loc[data.index[i], m] for i in samples]
     subsampled_indirect_effects[rep], subsampled_prop_mediated[rep] = _calc_indirect_effect(x_sub, y_sub, m_sub)
 
   indirect_effect_CI_lower = np.percentile(subsampled_indirect_effects, 2.5)

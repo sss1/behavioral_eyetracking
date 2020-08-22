@@ -9,6 +9,7 @@ import seaborn as sns
 sns.set()
 np.set_printoptions(suppress=True)
 
+import create_subjects_csvs
 import stats_utils
 
 # Load all subject data
@@ -57,127 +58,136 @@ def compute_statistics(subjects):
 
 def report_statistics_and_make_plots(ages, loc_accs, ptdts, ndts):
   """Generates statistics and plots reported in paper."""
+
+  sessions_df = create_subjects_csvs.get_experiment_data()
+  shrinky_df = sessions_df[sessions_df['condition'] == 'shrinky']
+  noshrinky_df = sessions_df[sessions_df['condition'] == 'noshrinky']
+
   # Compare statistics to chance values
   stats_utils.report_ttest_1sample(null_hypothesis="mean(shrinky PTDT) == 1/6",
-                                   sample=ptdts['shrinky'], popmean=1/6)
+                                   sample=shrinky_df['returning'], popmean=1/6)
   stats_utils.report_ttest_1sample(
       null_hypothesis="mean(noshrinky PTDT) == 1/6",
-      sample=ptdts['noshrinky'], popmean=1/6)
+      sample=noshrinky_df['returning'], popmean=1/6)
   stats_utils.report_ttest_1sample(null_hypothesis="mean(shrinky NDT) == 0",
-                       sample=ndts['shrinky'], popmean=0)
+                       sample=shrinky_df['staying'], popmean=0)
   stats_utils.report_ttest_1sample(null_hypothesis="mean(noshrinky NDT) == 0",
-                       sample=ndts['noshrinky'], popmean=0)
+                       sample=noshrinky_df['staying'], popmean=0)
 
   # Compare statistics between conditions
   stats_utils.report_ttest_paired_2sample(
       null_hypothesis="mean(shrinky location accuracy) == mean(noshrinky location accuracy)",
-      sample1=loc_accs['shrinky'], sample2=loc_accs['noshrinky'])
+      sample1=shrinky_df['loc_acc'], sample2=noshrinky_df['loc_acc'])
   stats_utils.report_ttest_paired_2sample(
       null_hypothesis="mean(shrinky PTDT) == mean(noshrinky PTDT)",
-      sample1=ptdts['shrinky'], sample2=ptdts['noshrinky'])
+      sample1=shrinky_df['returning'], sample2=noshrinky_df['returning'])
   stats_utils.report_ttest_paired_2sample(
       null_hypothesis="mean(shrinky NDT) == mean(noshrinky NDT)",
-      sample1=ndts['shrinky'], sample2=ndts['noshrinky'])
+      sample1=shrinky_df['staying'], sample2=noshrinky_df['staying'])
 
-  stats_utils.linreg_summary_and_plot(ages, loc_accs, 'shrinky', 'Location Accuracy over Age', plot=False)
-  stats_utils.linreg_summary_and_plot(ages, loc_accs, 'noshrinky', 'Location Accuracy over Age', plot=False)
+  stats_utils.linreg_summary_and_plot(x='age', y='loc_acc', data=shrinky_df, name='Location Accuracy over Age', plot=False)
+  stats_utils.linreg_summary_and_plot(x='age', y='loc_acc', data=noshrinky_df, name='Location Accuracy over Age', plot=False)
 
-  # # Linearly regress statistics over age
-  # plt.figure()
-  # plt.subplot(2, 2, 1)
-  # plt.xlim((3.5, 6))
-  # plt.xlabel('Age (years)')
-  # plt.ylim((0, 1))
-  # plt.ylabel('PTDT')
-  # plt.title('Returning, Salient Target')
-  # stats_utils.linreg_summary_and_plot(ages, ptdts, 'shrinky', 'PTDT over age')
+  # Linearly regress statistics over age
+  plt.figure()
+  plt.subplot(2, 2, 1)
+  plt.xlim((3.5, 6))
+  plt.xlabel('Age (years)')
+  plt.ylim((0, 1))
+  plt.plot([3.5, 6], [1/6, 1/6], c='red', ls='--')
+  plt.ylabel('PTDT')
+  plt.title('Returning, Salient Target')
+  stats_utils.linreg_summary_and_plot(x='age', y='returning', data=shrinky_df, name='PTDT over age')
 
   plt.subplot(2, 2, 2)
   plt.xlim((3.5, 6))
   plt.xlabel('Age (years)')
   plt.ylim((0, 1))
   plt.plot([3.5, 6], [1/6, 1/6], c='red', ls='--')
-  # plt.title('Returning, Non-Salient Target')
-  stats_utils.linreg_summary_and_plot(ages, ptdts, 'noshrinky', 'PTDT over age')
+  plt.title('Returning, Non-Salient Target')
+  stats_utils.linreg_summary_and_plot(x='age', y='returning', data=noshrinky_df, name='PTDT over age')
 
-  # plt.subplot(2, 2, 3)
-  # plt.xlim((3.5, 6))
-  # plt.xlabel('Age (years)')
-  # plt.ylim((-0.4, 2.4))
-  # plt.ylabel('NDT (seconds)')
-  # plt.title('Staying, Salient Target')
-  # stats_utils.linreg_summary_and_plot(ages, ndts, 'shrinky', 'NDT over age')
+  plt.subplot(2, 2, 3)
+  plt.xlim((3.5, 6))
+  plt.xlabel('Age (years)')
+  plt.ylim((-0.4, 2.4))
+  plt.plot([3.5, 6], [0, 0], c='red', ls='--')
+  plt.ylabel('NDT (seconds)')
+  plt.title('Staying, Salient Target')
+  stats_utils.linreg_summary_and_plot(x='age', y='staying', data=shrinky_df, name='NDT over age')
 
   plt.subplot(2, 2, 4)
   plt.xlim((3.5, 6))
   plt.xlabel('Age (years)')
   plt.ylim((-0.4, 2.4))
-  # plt.title('Staying, Non-Salient Target')
+  plt.title('Staying, Non-Salient Target')
   plt.plot([3.5, 6], [0, 0], c='red', ls='--')
-  stats_utils.linreg_summary_and_plot(ages, ndts, 'noshrinky', 'NDT over age')
+  stats_utils.linreg_summary_and_plot(x='age', y='staying', data=noshrinky_df, name='NDT over age')
   plt.tight_layout()
 
   plt.savefig('figs/linear_regressions_over_age.pdf')
 
-  # # Linearly regress statistics over location accuracy
-  # plt.figure()
-  # plt.subplot(2, 2, 1)
-  # plt.xlim((0, 1))
-  # plt.xlabel('Location Accuracy')
-  # plt.ylim((0, 1))
-  # plt.ylabel('Returning')
-  # # plt.title('Returning, Salient Target')
-  # stats_utils.linreg_summary_and_plot(loc_accs, ptdts, 'shrinky',
-  #                                     'PTDT over location accuracy')
+  # Linearly regress statistics over location accuracy
+  plt.figure()
   plt.subplot(2, 2, 1)
   plt.xlim((0, 1))
   plt.xlabel('Location Accuracy')
   plt.ylim((0, 1))
   plt.plot([0, 1], [1/6, 1/6], c='red', ls='--')
   plt.ylabel('Returning')
-  # plt.title('Returning, Non-Salient Target')
-  stats_utils.linreg_summary_and_plot(loc_accs, ptdts, 'noshrinky',
-                                      'PTDT over location accuracy')
-  # plt.subplot(2, 2, 3)
-  # plt.xlim((0, 1))
-  # plt.xlabel('Location Accuracy')
-  # plt.ylim((-0.4, 2.4))
-  # plt.ylabel('Staying')
-  # plt.title('Staying, Salient Target')
-  # stats_utils.linreg_summary_and_plot(loc_accs, ndts, 'shrinky',
-  #                                     'NDT over location accuracy')
+  plt.title('Returning, Salient Target')
+  stats_utils.linreg_summary_and_plot(x='loc_acc', y='returning', data=shrinky_df,
+                                      name='PTDT over location accuracy')
+  plt.subplot(2, 2, 2)
+  plt.xlim((0, 1))
+  plt.xlabel('Location Accuracy')
+  plt.ylim((0, 1))
+  plt.plot([0, 1], [1/6, 1/6], c='red', ls='--')
+  plt.ylabel('Returning')
+  plt.title('Returning, Non-Salient Target')
+  stats_utils.linreg_summary_and_plot(x='loc_acc', y='returning', data=noshrinky_df,
+                                      name='PTDT over location accuracy')
   plt.subplot(2, 2, 3)
   plt.xlim((0, 1))
   plt.xlabel('Location Accuracy')
   plt.ylim((-0.4, 2.4))
   plt.plot([0, 1], [0, 0], c='red', ls='--')
+  plt.ylabel('Staying')
+  plt.title('Staying, Salient Target')
+  stats_utils.linreg_summary_and_plot(x='loc_acc', y='staying', data=shrinky_df,
+                                      name='NDT over location accuracy')
+  plt.subplot(2, 2, 4)
+  plt.xlim((0, 1))
+  plt.xlabel('Location Accuracy')
+  plt.ylim((-0.4, 2.4))
+  plt.plot([0, 1], [0, 0], c='red', ls='--')
   plt.ylabel('Staying (seconds)')
-  # plt.title('Staying, Non-Salient Target')
-  stats_utils.linreg_summary_and_plot(loc_accs, ndts, 'noshrinky',
-                                      'NDT over location accuracy')
+  plt.title('Staying, Non-Salient Target')
+  stats_utils.linreg_summary_and_plot(x='loc_acc', y='staying', data=noshrinky_df,
+                                      name='NDT over location accuracy')
   plt.tight_layout()
   plt.savefig('figs/linear_regressions_over_location_accuracy.pdf')
 
   # Mediation Analysis
-  stats_utils.mediation_analysis(ages, loc_accs, ptdts, 'shrinky',
-                                 'PTDT mediating effect of Age on Loc Acc, shrinky')
-  stats_utils.mediation_analysis(ages, loc_accs, ptdts, 'noshrinky',
-                                 'PTDT mediating effect of Age on Loc Acc, noshrinky')
-  stats_utils.mediation_analysis(ages, loc_accs, ndts, 'shrinky',
-                                 'NDT mediating effect of Age on Loc Acc, shrinky')
-  stats_utils.mediation_analysis(ages, loc_accs, ndts, 'noshrinky',
-                                 'NDT mediating effect of Age on Loc Acc, noshrinky')
+  stats_utils.mediation_analysis(x='age', y='loc_acc', m='returning', data=shrinky_df,
+                                 title='PTDT mediating effect of Age on Loc Acc, shrinky')
+  stats_utils.mediation_analysis(x='age', y='loc_acc', m='returning', data=noshrinky_df,
+                                 title='PTDT mediating effect of Age on Loc Acc, noshrinky')
+  stats_utils.mediation_analysis(x='age', y='loc_acc', m='staying', data=shrinky_df,
+                                 title='NDT mediating effect of Age on Loc Acc, shrinky')
+  stats_utils.mediation_analysis(x='age', y='loc_acc', m='staying', data=noshrinky_df,
+                                 title='NDT mediating effect of Age on Loc Acc, noshrinky')
 
-  y = np.concatenate((stats.rankdata(ptdts['shrinky']),
-                      stats.rankdata(ptdts['noshrinky']),
-                      stats.rankdata(ndts['shrinky']),
-                      stats.rankdata(ndts['noshrinky'])))
-  x_age = np.concatenate((ages['shrinky'], ages['noshrinky'],
-                          ages['shrinky'], ages['noshrinky']))
-  x_measure_type = np.concatenate((np.zeros_like(ptdts['shrinky']),
-                                   np.zeros_like(ptdts['noshrinky']),
-                                   np.ones_like(ndts['shrinky']),
-                                   np.ones_like(ndts['noshrinky'])))
+  y = np.concatenate((stats.rankdata(shrinky_df['returning']),
+                      stats.rankdata(noshrinky_df['returning']),
+                      stats.rankdata(shrinky_df['staying']),
+                      stats.rankdata(noshrinky_df['staying'])))
+  x_age = np.concatenate((shrinky_df['age'], noshrinky_df['age'],
+                          shrinky_df['age'], noshrinky_df['age']))
+  x_measure_type = np.concatenate((np.zeros_like(shrinky_df['returning']),
+                                   np.zeros_like(noshrinky_df['returning']),
+                                   np.ones_like(shrinky_df['staying']),
+                                   np.ones_like(noshrinky_df['staying'])))
   x_interaction = np.multiply(x_age, x_measure_type)
   X = np.stack((x_age, x_measure_type, x_interaction), axis=1)
   print(sm.OLS(y, sm.add_constant(X)).fit().summary())
