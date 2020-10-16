@@ -75,15 +75,18 @@ def report_statistics_and_make_plots(ages, loc_accs, ptdts, ndts):
                        sample=noshrinky_df['staying'], popmean=0)
 
   # Compare statistics between conditions
-  stats_utils.report_ttest_paired_2sample(
+  stats_utils.report_ttest_2sample(
       null_hypothesis="mean(shrinky location accuracy) == mean(noshrinky location accuracy)",
-      sample1=shrinky_df['loc_acc'], sample2=noshrinky_df['loc_acc'])
-  stats_utils.report_ttest_paired_2sample(
+      sample1=shrinky_df['loc_acc'], sample2=noshrinky_df['loc_acc'],
+      paired=True)
+  stats_utils.report_ttest_2sample(
       null_hypothesis="mean(shrinky PTDT) == mean(noshrinky PTDT)",
-      sample1=shrinky_df['returning'], sample2=noshrinky_df['returning'])
-  stats_utils.report_ttest_paired_2sample(
+      sample1=shrinky_df['returning'], sample2=noshrinky_df['returning'],
+      paired=True)
+  stats_utils.report_ttest_2sample(
       null_hypothesis="mean(shrinky NDT) == mean(noshrinky NDT)",
-      sample1=shrinky_df['staying'], sample2=noshrinky_df['staying'])
+      sample1=shrinky_df['staying'], sample2=noshrinky_df['staying'],
+      paired=True)
 
   stats_utils.linreg_summary_and_plot(x='age', y='loc_acc', data=shrinky_df, name='Location Accuracy over Age', plot=False)
   stats_utils.linreg_summary_and_plot(x='age', y='loc_acc', data=noshrinky_df, name='Location Accuracy over Age', plot=False)

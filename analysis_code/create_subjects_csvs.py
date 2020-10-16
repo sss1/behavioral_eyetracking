@@ -58,12 +58,8 @@ def get_frame_data() -> pd.DataFrame:
 
         # Frame-level array data
         for object_idx in range(trackit_trial.object_positions.shape[0]):
-          if object_idx == 0:
-            object_x_col_name = f'target_{object_idx}_x'
-            object_y_col_name = f'target_{object_idx}_y'
-          else:
-            object_x_col_name = f'distractor_{object_idx}_x'
-            object_y_col_name = f'distractor_{object_idx}_y'
+          object_x_col_name = f'object_{object_idx}_x'
+          object_y_col_name = f'object_{object_idx}_y'
           if not object_x_col_name in table_as_dict:
             table_as_dict[object_x_col_name] = []
             table_as_dict[object_y_col_name] = []

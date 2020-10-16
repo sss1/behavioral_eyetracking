@@ -19,6 +19,31 @@ _TRIALS_TO_KEEP = list(range(1, 11))
 
 Run = NamedTuple('Run', [('object', int), ('length', int)])
 
+def add_next_object_column(df: pd.DataFrame) -> pd.DataFrame:
+  """Compute next object for each pair of consecutive frames."""
+
+  trial_dfs = []
+  for key, trial_df in df.groupby(by=['subject_id', 'condition', 'trial_num']):
+
+    # Suppress SettingWithCopyWarning because we will overwrite df later
+    trial_df = trial_df.copy()
+
+    trial_df.sort_values(by='frame', inplace=True)
+    trial_df['next_frame_HMM'] = trial_df['HMM'].shift(-1)
+    trial_dfs.append(trial_df)
+
+  df = pd.concat(trial_dfs, ignore_index=True)
+
+  # Remove "transitions" to End-Of-Trial
+  df = df[~df['next_frame_HMM'].isnull()]
+  df['next_frame_HMM'] = df['next_frame_HMM'].astype(int)
+  
+  # Remove "transitions" to/from Off-Screen
+  df = df[(df['HMM'] >= 0) & (df['next_frame_HMM'] >= 0)]
+
+  return df
+
+
 def average_over_trials(metric: Callable, experiment):
   """Computes the average of a metric over trial."""
   return np.nanmean(
@@ -183,10 +208,13 @@ def report_ttest_1sample(
   else:
     print('Fail to reject null hypothesis.\n')
 
-def report_ttest_paired_2sample(null_hypothesis, sample1, sample2, alpha=0.05):
-  """Pretty-prints results of a two-sided paired two-sample t-test."""
+def report_ttest_2sample(null_hypothesis, sample1, sample2, paired, alpha=0.05):
+  """Pretty-prints results of a two-sided two-sample t-test."""
 
-  t_value, p_value = stats.ttest_rel(sample1, sample2)
+  if paired:
+    t_value, p_value = stats.ttest_rel(sample1, sample2)
+  else:
+    t_value, p_value = stats.ttest_ind(sample1, sample2)
   print('Test for null hypothesis "{}".'.format(null_hypothesis))
   print('Sample 1 mean: {}, Sample 1 SD: {}'.format(np.mean(sample1), np.std(sample1)))
   print('Sample 2 mean: {}, Sample 2 SD: {}'.format(np.mean(sample2), np.std(sample2)))
@@ -268,6 +296,6 @@ def mediation_analysis(x: str, y: str, m: str, data: pd.DataFrame, title, num_re
   prop_mediated_CI_lower = np.percentile(subsampled_prop_mediated, 2.5)
   prop_mediated_CI_upper = np.percentile(subsampled_prop_mediated, 97.5)
   print(title)
-  print(f'Indirect Effect: {indirect_effect}    95% CI: ({indirect_effect_CI_lower}, {indirect_effect_CI_upper})')
-  print(f'Proportion Mediation: {prop_mediated}    95% CI: ({prop_mediated_CI_lower}, {prop_mediated_CI_upper})')
-  print(f'p-value: {p_value}')
+  print(f'Indirect Effect: {indirect_effect:.3f}    95% CI: ({indirect_effect_CI_lower:.3f}, {indirect_effect_CI_upper:.3f})')
+  print(f'Proportion Mediation: {prop_mediated:.3f}    95% CI: ({prop_mediated_CI_lower:.3f}, {prop_mediated_CI_upper:.3f})')
+  print(f'p-value: {p_value:.3f}')
