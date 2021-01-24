@@ -181,6 +181,17 @@ def experiment_btd(experiment, omit_missing_frames=True) -> float:
   slope = linear_regression_with_CIs(xs, ys, return_CIs=False)
   return slope
 
+def report_univariate_statistics(
+      name: str, sample: List[float], alpha: float = 0.05):
+  """Pretty prints basic statistics about a univariate distribution."""
+  mean = np.mean(sample)
+  std = np.std(sample)
+  n = len(sample)
+  lower = mean - 1.96*std/math.sqrt(n)
+  upper = mean + 1.96*std/math.sqrt(n)
+  print(f'Distribution Statistics for {name}')
+  print(f'Sample mean: {mean:.2f} ({lower:.2f}, {upper:.2f}), Sample SD: {std:.2f}\n')
+
 def report_ttest_1sample(
         null_hypothesis: str, sample: List[float], popmean: float,
         one_sided: bool = False, alpha: float = 0.05):
